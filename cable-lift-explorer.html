@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cable Lift Position Control</title>
+<style>
+  :root {
+    --bg:#f4f3ef;--card:#fff;--surface:#eeede8;
+    --border:rgba(0,0,0,0.08);--border-s:rgba(0,0,0,0.15);
+    --text:#1a1a18;--t2:#555550;--t3:#8a8a82;
+    --blue:#1a6fc4;--blue-l:#e6f0fa;--blue-b:#a8c8f0;
+    --green:#0f7a54;--green-l:#e0f2ea;
+    --coral:#c04828;--coral-l:#faece6;
+    --amber:#7a5000;--amber-l:#fef2d8;
+    --purple:#5040b0;--purple-l:#edeafc;
+    --teal:#0a7878;--teal-l:#dff3f3;
+    --r:10px;--rs:6px;
+    --motor:#1a6fc4;--gear:#7a5000;--drum:#0a7878;--full:#5040b0;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#141412;--card:#1e1e1c;--surface:#262624;
+      --border:rgba(255,255,255,0.08);--border-s:rgba(255,255,255,0.15);
+      --text:#e4e4dc;--t2:#9a9a90;--t3:#666660;
+      --blue:#5ea4f0;--blue-l:#101c2e;--blue-b:#1a4070;
+      --green:#48c48a;--green-l:#0c1c16;
+      --coral:#f08060;--coral-l:#201210;
+      --amber:#e8b830;--amber-l:#1c1608;
+      --purple:#9888ee;--purple-l:#161028;
+      --teal:#40c8c8;--teal-l:#0a1e1e;
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.5;}
+  header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 18px;position:sticky;top:0;z-index:100;}
+  .hdr{max-width:780px;margin:0 auto;}
+  h1{font-size:16px;font-weight:700;letter-spacing:-0.01em;}
+  .hsub{font-size:11px;color:var(--t2);margin-top:1px;}
+  .sys-strip{background:var(--card);border-bottom:1px solid var(--border);padding:10px 0 0;}
+  .sys-inner{max-width:780px;margin:0 auto;padding:0 14px;}
+  .sys-chain{display:flex;align-items:center;overflow-x:auto;scrollbar-width:none;padding-bottom:10px;}
+  .sys-chain::-webkit-scrollbar{display:none;}
+  .sys-block{flex-shrink:0;display:flex;flex-direction:column;align-items:center;cursor:pointer;padding:4px 6px;border-radius:8px;transition:background 0.15s;}
+  .sys-block:hover{background:var(--surface);}
+  .sys-box{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;border:1.5px solid;white-space:nowrap;}
+  .sys-tf{font-size:9px;color:var(--t3);margin-top:2px;white-space:nowrap;}
+  .sys-arrow{font-size:18px;color:var(--t3);padding:0 2px;flex-shrink:0;margin-top:-10px;}
+  .sb-motor{background:var(--blue-l);border-color:var(--blue);color:var(--blue);}
+  .sb-gear{background:var(--amber-l);border-color:var(--amber);color:var(--amber);}
+  .sb-drum{background:var(--teal-l);border-color:var(--teal);color:var(--teal);}
+  .sb-full{background:var(--purple-l);border-color:var(--purple);color:var(--purple);}
+  .tab-nav{background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;position:sticky;top:57px;z-index:90;}
+  .tab-nav::-webkit-scrollbar{display:none;}
+  .tab-nav-inner{max-width:780px;margin:0 auto;display:flex;}
+  .tab-btn{flex:1;min-width:90px;padding:9px 8px;font-size:12px;font-weight:600;color:var(--t2);border:none;background:none;cursor:pointer;border-bottom:2.5px solid transparent;transition:all 0.15s;white-space:nowrap;text-align:center;}
+  .tab-btn.active-motor{color:var(--motor);border-bottom-color:var(--motor);}
+  .tab-btn.active-gear{color:var(--gear);border-bottom-color:var(--gear);}
+  .tab-btn.active-drum{color:var(--drum);border-bottom-color:var(--drum);}
+  .tab-btn.active-full{color:var(--full);border-bottom-color:var(--full);}
+  .tab-pane{display:none;}
+  .tab-pane.active{display:block;}
+  main{max-width:780px;margin:0 auto;padding:14px 14px 48px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 16px 18px;margin-bottom:12px;}
+  .card-t{font-size:13px;font-weight:700;margin-bottom:2px;}
+  .card-s{font-size:12px;color:var(--t2);line-height:1.55;margin-bottom:12px;}
+  .tf{background:var(--surface);border-radius:var(--rs);padding:12px;text-align:center;margin:8px 0 12px;}
+  .tf-lab{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;}
+  .tf-row{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;}
+  .tf-lhs{font-size:13px;color:var(--t2);white-space:nowrap;}
+  .tf-frac{display:inline-flex;flex-direction:column;align-items:center;}
+  .tf-n{font-size:14px;font-weight:700;color:var(--text);padding:0 10px 3px;white-space:nowrap;}
+  .tf-bar{height:1.5px;background:var(--border-s);width:100%;}
+  .tf-d{font-size:13px;color:var(--text);padding:3px 10px 0;white-space:nowrap;}
+  .tf-note{font-size:11px;color:var(--t3);margin-top:6px;}
+  .params{display:flex;flex-direction:column;gap:12px;margin:4px 0 8px;}
+  .p-group{display:flex;flex-direction:column;gap:2px;}
+  .p-top{display:flex;align-items:baseline;gap:7px;}
+  .p-sym{font-size:15px;font-weight:700;font-style:italic;width:20px;flex-shrink:0;}
+  .p-title{font-size:12px;font-weight:600;color:var(--text);}
+  .p-val{margin-left:auto;font-size:12px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .p-desc{font-size:11px;color:var(--t3);line-height:1.5;padding-left:27px;margin-bottom:3px;}
+  .p-slider{display:flex;align-items:center;gap:7px;padding-left:27px;}
+  .p-lo,.p-hi{font-size:10px;color:var(--t3);flex-shrink:0;min-width:24px;}
+  .p-hi{text-align:right;}
+  input[type=range]{flex:1;height:5px;-webkit-appearance:none;appearance:none;background:var(--border-s);border-radius:3px;outline:none;cursor:pointer;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#555;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.25);}
+  input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#555;cursor:pointer;border:none;}
+  .sl-motor input[type=range]::-webkit-slider-thumb,.sl-motor input[type=range]::-moz-range-thumb{background:var(--motor);}
+  .sl-gear input[type=range]::-webkit-slider-thumb,.sl-gear input[type=range]::-moz-range-thumb{background:var(--gear);}
+  .sl-drum input[type=range]::-webkit-slider-thumb,.sl-drum input[type=range]::-moz-range-thumb{background:var(--drum);}
+  .chips{display:grid;gap:6px;margin:8px 0;}
+  .chips-3{grid-template-columns:repeat(3,1fr);}
+  .chips-4{grid-template-columns:repeat(4,1fr);}
+  .chips-2{grid-template-columns:repeat(2,1fr);}
+  @media(max-width:420px){.chips-3,.chips-4,.chips-2{grid-template-columns:1fr 1fr;}}
+  .chip{background:var(--surface);border-radius:var(--rs);padding:7px 9px;text-align:center;}
+  .chip-l{font-size:10px;color:var(--t3);}
+  .chip-v{font-size:13px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;margin-top:1px;}
+  .chip-highlight{border:1.5px solid;}
+  canvas{width:100%;display:block;border-radius:var(--rs);margin-top:10px;}
+  .cv-lab{font-size:11px;color:var(--t3);text-align:center;margin-top:5px;line-height:1.5;}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;vertical-align:middle;margin-left:5px;}
+  .b-good{background:var(--green-l);color:var(--green);}
+  .b-warn{background:var(--amber-l);color:var(--amber);}
+  .b-bad{background:var(--coral-l);color:var(--coral);}
+  .mismatch-wrap{margin:10px 0;}
+  .mismatch-row{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+  .mismatch-label{font-size:12px;color:var(--t2);flex-shrink:0;width:120px;}
+  .mismatch-bar-bg{flex:1;height:12px;background:var(--surface);border-radius:6px;overflow:visible;position:relative;}
+  .mismatch-bar-fg{height:100%;border-radius:6px;transition:width 0.3s ease;max-width:100%;}
+  .mismatch-ideal{position:absolute;top:-3px;width:2px;height:18px;background:var(--green);border-radius:1px;}
+  .mismatch-val{font-size:12px;font-weight:700;min-width:50px;text-align:right;font-variant-numeric:tabular-nums;}
+  .accent-line{height:3px;border-radius:2px;margin-bottom:14px;}
+  .flow-row{display:flex;align-items:center;gap:4px;margin:10px 0;flex-wrap:wrap;}
+  .flow-block{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;text-align:center;flex-shrink:0;}
+  .flow-arrow{font-size:14px;color:var(--t3);flex-shrink:0;}
+  .sep{height:1px;background:var(--border);margin:12px 0;}
+  .highlight-box{border-radius:var(--rs);padding:10px 12px;font-size:12px;line-height:1.6;margin:10px 0;}
+  .hb-warn{background:var(--amber-l);color:var(--amber);border:1px solid var(--amber);}
+  .hb-good{background:var(--green-l);color:var(--green);border:1px solid #6abf8a;}
+  .hb-info{background:var(--blue-l);color:var(--blue);border:1px solid var(--blue-b);}
+  .hb-bad{background:var(--coral-l);color:var(--coral);border:1px solid var(--coral);}
+  /* Legend dots */
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 0;font-size:11px;color:var(--t2);}
+  .legend-item{display:flex;align-items:center;gap:5px;}
+  .legend-line{width:20px;height:2.5px;border-radius:2px;flex-shrink:0;}
+  .legend-dash{width:20px;height:0;border-top:2px dashed;flex-shrink:0;opacity:0.6;}
+  @media(max-width:480px){.card{padding:12px 12px 14px;}.p-desc,.p-slider{padding-left:0;}}
+  footer{text-align:center;font-size:11px;color:var(--t3);padding:14px;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr">
+    <h1>Cable Lift Position Control</h1>
+    <div class="hsub">Motor → Gearbox (4:1.5) → Drum → Cable → Load · Cascaded transfer functions · Position control</div>
+  </div>
+</header>
+
+<div class="sys-strip">
+  <div class="sys-inner">
+    <div class="sys-chain">
+      <div class="sys-block" onclick="showTab('motor')"><div class="sys-box sb-motor">Motor</div><div class="sys-tf">V → ω_m</div></div>
+      <div class="sys-arrow">→</div>
+      <div class="sys-block" onclick="showTab('gear')"><div class="sys-box sb-gear">Gearbox</div><div class="sys-tf">ω_m → ω_d</div></div>
+      <div class="sys-arrow">→</div>
+      <div class="sys-block" onclick="showTab('drum')"><div class="sys-box sb-drum">Drum</div><div class="sys-tf">ω_d → x</div></div>
+      <div class="sys-arrow">→</div>
+      <div class="sys-block" onclick="showTab('full')"><div class="sys-box sb-full">Full System</div><div class="sys-tf">V → x (position)</div></div>
+    </div>
+  </div>
+</div>
+
+<nav class="tab-nav">
+  <div class="tab-nav-inner">
+    <button class="tab-btn active-motor" id="btn-motor" onclick="showTab('motor')">① Motor</button>
+    <button class="tab-btn" id="btn-gear" onclick="showTab('gear')">② Gearbox</button>
+    <button class="tab-btn" id="btn-drum" onclick="showTab('drum')">③ Drum &amp; Load</button>
+    <button class="tab-btn" id="btn-full" onclick="showTab('full')">④ Full System</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ══════════════ TAB 1: MOTOR ══════════════ -->
+<div id="pane-motor" class="tab-pane active">
+  <div class="card">
+    <div class="accent-line" style="background:var(--motor);"></div>
+    <div class="card-t" style="color:var(--motor);">Motor — electrical &amp; mechanical dynamics</div>
+    <div class="card-s">The motor converts input voltage to rotor angular velocity. The armature circuit (R, L) drives current; current produces torque through K; torque spins the rotor against its own inertia J_m and bearing friction.</div>
+    <div class="tf">
+      <div class="tf-lab">Motor transfer function (voltage → rotor speed)</div>
+      <div class="tf-row">
+        <span class="tf-lhs">Ω_m(s) / V(s) =</span>
+        <div class="tf-frac">
+          <div class="tf-n" id="mTfN">K</div>
+          <div class="tf-bar"></div>
+          <div class="tf-d" id="mTfD">(Ls+R)(J_m·s+b_m)+K²</div>
+        </div>
+      </div>
+      <div class="tf-note" id="mTfSpec"></div>
+    </div>
+    <div class="params sl-motor">
+      <div class="p-group">
+        <div class="p-top"><div class="p-sym" style="color:var(--motor);">R</div><div class="p-title">Armature resistance</div><div class="p-val" id="vR">2.0 Ω</div></div>
+        <div class="p-desc">Winding wire resistance. Lower R allows more current and torque but requires thicker, heavier copper wire.</div>
+        <div class="p-slider"><span class="p-lo">0.5</span><input type="range" id="sR" min="0.5" max="10" step="0.1" value="2" oninput="calc()"><span class="p-hi">10 Ω</span></div>
+      </div>
+      <div class="p-group">
+        <div class="p-top"><div class="p-sym" style="color:var(--motor);">L</div><div class="p-title">Armature inductance</div><div class="p-val" id="vL">0.10 H</div></div>
+        <div class="p-desc">Coil inductance. Higher L slows how quickly current (and thus torque) can change. Longer windings or a larger core increase L.</div>
+        <div class="p-slider"><span class="p-lo">0.01</span><input type="range" id="sL" min="0.01" max="0.5" step="0.01" value="0.1" oninput="calc()"><span class="p-hi">0.5 H</span></div>
+      </div>
+      <div class="p-group">
+        <div class="p-top"><div class="p-sym" style="color:var(--motor);">K</div><div class="p-title">Motor constant</div><div class="p-val" id="vK">0.50</div></div>
+        <div class="p-desc">Torque per amp (T = K·i) and back-EMF per rad/s (V_emf = K·ω). Higher K gives more torque but generates stronger back-EMF, limiting top speed.</div>
+        <div class="p-slider"><span class="p-lo">0.1</span><input type="range" id="sK" min="0.1" max="2" step="0.01" value="0.5" oninput="calc()"><span class="p-hi">2.0</span></div>
+      </div>
+      <div class="p-group">
+        <div class="p-top"><div class="p-sym" style="color:var(--motor);">J_m</div><div class="p-title">Rotor inertia</div><div class="p-val" id="vJm">0.010 kg·m²</div></div>
+        <div class="p-desc">Moment of inertia of the motor's own rotor. This is the reference for inertia mismatch — before any load is connected.</div>
+        <div class="p-slider"><span class="p-lo">0.001</span><input type="range" id="sJm" min="0.001" max="0.1" step="0.001" value="0.01" oninput="calc()"><span class="p-hi">0.1</span></div>
+      </div>
+    </div>
+    <div class="chips chips-3">
+      <div class="chip"><div class="chip-l">Elec. time const. τ_e</div><div class="chip-v" id="mTauE">—</div></div>
+      <div class="chip"><div class="chip-l">Natural freq. ωₙ</div><div class="chip-v" id="mWn">—</div></div>
+      <div class="chip"><div class="chip-l">Damping ratio ζ</div><div class="chip-v" id="mZeta">—</div></div>
+    </div>
+    <canvas id="cvMotor" height="160"></canvas>
+    <div class="cv-lab">Rotor speed ω_m(t) for unit voltage step — motor alone, no load</div>
+  </div>
+
+  <!-- PERFORMANCE PLOT — MOTOR -->
+  <div class="card">
+    <div class="accent-line" style="background:var(--motor);opacity:0.4;"></div>
+    <div class="card-t">Performance — time constants introduced by this block</div>
+    <div class="card-s">Two time constants compete. <strong>τ_e = L/R</strong> governs how fast current (torque) builds in the windings. <strong>τ_m = J_m·R/K²</strong> governs how fast the rotor accelerates against back-EMF damping. The slower one sets the effective speed of the motor's response.</div>
+    <div class="chips chips-3" style="margin-bottom:4px;">
+      <div class="chip chip-highlight" style="border-color:var(--motor);"><div class="chip-l">τ_e = L / R</div><div class="chip-v" style="color:var(--motor);" id="pt-tauE">—</div></div>
+      <div class="chip chip-highlight" style="border-color:var(--coral);"><div class="chip-l">τ_m = J_m·R / K²</div><div class="chip-v" style="color:var(--coral);" id="pt-tauM">—</div></div>
+      <div class="chip"><div class="chip-l">Dominant τ (slower)</div><div class="chip-v" id="pt-tauDom">—</div></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-line" style="background:var(--motor);"></div>ω_m(t) response</div>
+      <div class="legend-item"><div class="legend-dash" style="border-color:var(--motor);"></div>τ_e marker</div>
+      <div class="legend-item"><div class="legend-dash" style="border-color:var(--coral);"></div>τ_m marker</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--t3);opacity:0.4;"></div>63% of steady state</div>
+    </div>
+    <canvas id="cvPerfMotor" height="200"></canvas>
+    <div class="cv-lab">Vertical markers show where each time constant falls on the response curve · The 63% line shows the classic first-order reference point · A second-order system reaches 63% somewhere between its two time constants</div>
+  </div>
+</div>
+
+<!-- ══════════════ TAB 2: GEARBOX ══════════════ -->
+<div id="pane-gear" class="tab-pane">
+  <div class="card">
+    <div class="accent-line" style="background:var(--gear);"></div>
+    <div class="card-t" style="color:var(--gear);">Gearbox — speed reduction &amp; inertia reflection</div>
+    <div class="card-s">The gearbox steps down motor speed by ratio N = 4/1.5 ≈ 2.667. All downstream inertia (drum + load) gets divided by N² when reflected back to the motor shaft. It also hosts two of the four system bearings.</div>
+    <div class="tf">
+      <div class="tf-lab">Gearbox relationship</div>
+      <div class="tf-row" style="flex-direction:column;gap:4px;">
+        <div style="font-size:13px;color:var(--text);">ω_drum = ω_motor / N &nbsp;&nbsp;·&nbsp;&nbsp; N = 4 / 1.5 = <strong id="gNval">2.667</strong></div>
+        <div style="font-size:12px;color:var(--t2);">J_reflected = J_downstream / N² &nbsp;&nbsp;·&nbsp;&nbsp; b_reflected = b_downstream / N²</div>
+      </div>
+    </div>
+    <div class="params sl-gear">
+      <div class="p-group">
+        <div class="p-top"><div class="p-sym" style="color:var(--gear);">N</div><div class="p-title">Gear ratio</div><div class="p-val" id="vN">2.667</div></div>
+        <div class="p-desc">Speed reduction from motor to drum shaft. N = 4/1.5 is fixed by tooth counts, but drag to see how ratio choice affects reflected inertia and the mismatch. Higher N = downstream inertias shrink faster (/N²).</div>
+        <div class="p-slider"><span class="p-lo">1.0</span><input type="range" id="sN" min="1.0" max="8.0" step="0.1" value="2.667" oninput="calc()"><span class="p-hi">8.0</span></div>
+      </div>
+      <div class="p-group">
+        <div class="p-top"><div class="p-sym" style="color:var(--gear);">J_g</div><div class="p-title">Gear/shaft inertia</div><div class="p-val" id="vJg">0.005 kg·m²</div></div>
+        <div class="p-desc">Inertia of the gear wheels and intermediate shaft (drum side). Reflects to motor shaft as J_g/N². Heavier gears (metal, large diameter) have higher J_g.</div>
+        <div class="p-slider"><span class="p-lo">0.001</span><input type="range" id="sJg" min="0.001" max="0.1" step="0.001" value="0.005" oninput="calc()"><span class="p-hi">0.1</span></div>
+      </div>
+      <div class="p-group">
+        <div class="p-top"><div class="p-sym" style="color:var(--gear);">c_b</div><div class="p-title">Bearing drag coefficient (each)</div><div class="p-val" id="vCb">0.010</div></div>
+        <div class="p-desc">Viscous drag per bearing. 2 on the motor shaft (direct) + 2 on drum shaft (reflected as c_b/N²). Precision bearings have very low c_b.</div>
+        <div class="p-slider"><span class="p-lo">0.001</span><input type="range" id="sCb" min="0.001" max="0.1" step="0.001" value="0.01" oninput="calc()"><span class="p-hi">0.1</span></div>
+      </div>
+    </div>
+    <div class="chips chips-3">
+      <div class="chip"><div class="chip-l">Gear ratio N</div><div class="chip-v" id="gN">2.667</div></div>
+      <div class="chip"><div class="chip-l">J_g reflected to motor</div><div class="chip-v" id="gJgRef">—</div></div>
+      <div class="chip"><div class="chip-l">Total bearing damping</div><div class="chip-v" id="gBtot">—</div></div>
+    </div>
+    <div class="sep"></div>
+    <div class="chips chips-2">
+      <div class="chip"><div class="chip-l">N² reduction factor</div><div class="chip-v" id="gN2">7.11×</div></div>
+      <div class="chip"><div class="chip-l">Drum bearing contribution</div><div class="chip-v" id="gBred">—</div></div>
+    </div>
+    <div class="highlight-box hb-info" id="gearNote">—</div>
+  </div>
+
+  <!-- INERTIA MISMATCH EXPLAINER -->
+  <div class="card" style="border-left:3px solid var(--gear);">
+    <div class="card-t">What is inertia mismatch?</div>
+    <div class="card-s">When a motor drives a load, the load's inertia appears at the motor shaft — scaled by the gear ratio. The ratio of that <em>reflected</em> load inertia to the motor's own rotor inertia is the <strong>inertia mismatch ratio</strong>.</div>
+    <div class="tf" style="margin-bottom:10px;">
+      <div class="tf-lab">Inertia mismatch ratio</div>
+      <div class="tf-row">
+        <div class="tf-frac">
+          <div class="tf-n">J_reflected</div>
+          <div class="tf-bar"></div>
+          <div class="tf-d">J_motor</div>
+        </div>
+        <span style="font-size:14px;color:var(--t2);margin:0 10px;">=</span>
+        <div class="tf-frac">
+          <div class="tf-n">J_gear/N² + J_drum/N² + m·r²/N²</div>
+          <div class="tf-bar"></div>
+          <div class="tf-d">J_m</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-s" style="margin-bottom:8px;">A ratio of <strong>1:1 is ideal</strong> — the load feels exactly as heavy to the motor as the motor's own rotor. When the ratio is much greater than 1, the motor is trying to accelerate an effective mass far larger than it was designed for. This leads to:</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div class="highlight-box hb-warn" style="margin:0;">
+        <strong>High mismatch (ratio ≫ 1)</strong><br>
+        Sluggish response · Long settling time · Reduced control bandwidth · Risk of instability · Motor overheating from sustained high current
+      </div>
+      <div class="highlight-box hb-good" style="margin:0;">
+        <strong>Well matched (ratio ≈ 1)</strong><br>
+        Fast acceleration · Short settling time · Full control bandwidth available · Efficient power transfer · Good dynamic accuracy
+      </div>
+    </div>
+    <div class="card-s" style="margin-bottom:0;">The gear ratio N is the primary design lever — increasing N reduces all downstream inertias by N². This is why gearboxes exist beyond just changing speed: they are <em>inertia transformers</em>. The performance plot below shows exactly how your choices shift the dominant time constant.</div>
+  </div>
+
+  <!-- PERFORMANCE PLOT — GEAR -->
+  <div class="card">
+    <div class="accent-line" style="background:var(--gear);opacity:0.4;"></div>
+    <div class="card-t">Performance — how the gearbox shifts the dominant time constant</div>
+    <div class="card-s">Adding the gearbox introduces J_g/N² and adjusts bearing damping. The dominant time constant τ_dom = J_tot·R/(K²+R·b_tot) shifts as N and J_g change. The overlay shows the motor-alone response vs. the response after the gearbox is added.</div>
+    <div class="chips chips-3" style="margin-bottom:4px;">
+      <div class="chip chip-highlight" style="border-color:var(--motor);"><div class="chip-l">τ_dom — motor alone</div><div class="chip-v" style="color:var(--motor);" id="gt-tauBefore">—</div></div>
+      <div class="chip chip-highlight" style="border-color:var(--gear);"><div class="chip-l">τ_dom — after gearbox</div><div class="chip-v" style="color:var(--gear);" id="gt-tauAfter">—</div></div>
+      <div class="chip"><div class="chip-l">τ increase</div><div class="chip-v" id="gt-tauDelta">—</div></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-line" style="background:var(--motor);opacity:0.45;"></div>Motor alone</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--gear);"></div>Motor + gearbox</div>
+      <div class="legend-item"><div class="legend-dash" style="border-color:var(--motor);"></div>τ (motor alone)</div>
+      <div class="legend-item"><div class="legend-dash" style="border-color:var(--gear);"></div>τ (after gearbox)</div>
+    </div>
+    <canvas id="cvPerfGear" height="200"></canvas>
+    <div class="cv-lab">Overlay shows what the gearbox adds to system lag · If the two curves are nearly identical, the gearbox inertia is negligible · Large separation means gear mass is a significant contributor</div>
+  </div>
+</div>
+
+<!-- ══════════════ TAB 3: DRUM & LOAD ══════════════ -->
+<div id="pane-drum" class="tab-pane">
+  <div class="card">
+    <div class="accent-line" style="background:var(--drum);"></div>
+    <div class="card-t" style="color:var(--drum);">Drum &amp; load — rotational to linear</div>
+    <div class="card-s">The drum converts shaft rotation to cable movement: x = r·θ. The hanging load m reflects as J_load = m·r² at the drum shaft, then /N² further to the motor shaft. This is typically the largest single contributor to inertia mismatch.</div>
+    <div class="tf">
+      <div class="tf-lab">Drum kinematic relationship</div>
+      <div class="tf-row" style="flex-direction:column;gap:4px;">
+        <div style="font-size:13px;color:var(--text);">x(t) = r · θ_drum(t) &nbsp;→&nbsp; X(s) = (r/s) · Ω_drum(s)</div>
+        <div style="font-size:12px;color:var(--t2);">J_load_drum = m·r² &nbsp;&nbsp;·&nbsp;&nbsp; J_load_motor = m·r² / N²</div>
+      </div>
+    </div>
+    <div class="params sl-drum">
+      <div class="p-group">
+        <div class="p-top"><div class="p-sym" style="color:var(--drum);">r</div><div class="p-title">Drum radius</div><div class="p-val" id="vR_drum">0.050 m</div></div>
+        <div class="p-desc">Radius of the cable drum. Larger r lifts faster per revolution but reflects the load as a larger equivalent inertia — J_load scales as r².</div>
+        <div class="p-slider"><span class="p-lo">0.02</span><input type="range" id="sRd" min="0.02" max="0.2" step="0.005" value="0.05" oninput="calc()"><span class="p-hi">0.2 m</span></div>
+      </div>
+      <div class="p-group">
+        <div class="p-top"><div class="p-sym" style="color:var(--drum);">J_d</div><div class="p-title">Drum inertia</div><div class="p-val" id="vJd">0.020 kg·m²</div></div>
+        <div class="p-desc">Inertia of the drum spool itself. Reflects to motor shaft as J_d/N². A larger, heavier drum adds directly to the mismatch.</div>
+        <div class="p-slider"><span class="p-lo">0.001</span><input type="range" id="sJd" min="0.001" max="0.2" step="0.001" value="0.02" oninput="calc()"><span class="p-hi">0.2</span></div>
+      </div>
+      <div class="p-group">
+        <div class="p-top"><div class="p-sym" style="color:var(--drum);">m</div><div class="p-title">Load mass</div><div class="p-val" id="vM">5.0 kg</div></div>
+        <div class="p-desc">Mass of the hanging payload. Reflects as m·r²/N² — typically the dominant inertia in the system. Heavy loads with small gear ratios create severe mismatch.</div>
+        <div class="p-slider"><span class="p-lo">0.5</span><input type="range" id="sM" min="0.5" max="50" step="0.5" value="5" oninput="calc()"><span class="p-hi">50 kg</span></div>
+      </div>
+    </div>
+    <div class="chips chips-3">
+      <div class="chip"><div class="chip-l">J_load at drum shaft</div><div class="chip-v" id="dJload_drum">—</div></div>
+      <div class="chip"><div class="chip-l">J_load at motor shaft</div><div class="chip-v" id="dJload_motor">—</div></div>
+      <div class="chip"><div class="chip-l">J_drum at motor shaft</div><div class="chip-v" id="dJdrum_motor">—</div></div>
+    </div>
+    <div class="sep"></div>
+    <div class="card-t" style="font-size:12px;margin-bottom:6px;">Inertia mismatch</div>
+    <div class="mismatch-wrap" id="mismatchViz"></div>
+    <div class="highlight-box" id="mismatchNote">—</div>
+  </div>
+
+  <!-- PERFORMANCE PLOT — DRUM -->
+  <div class="card">
+    <div class="accent-line" style="background:var(--drum);opacity:0.4;"></div>
+    <div class="card-t">Performance — how load mass and drum radius stretch the time constant</div>
+    <div class="card-s">The load mass is usually the biggest source of slowdown. The overlay compares the response with the current load against the system with no payload (m → 0). The gap between the two curves is directly caused by J_load = m·r²/N².</div>
+    <div class="chips chips-3" style="margin-bottom:4px;">
+      <div class="chip chip-highlight" style="border-color:var(--gear);"><div class="chip-l">τ_dom — no payload</div><div class="chip-v" style="color:var(--gear);" id="dt-tauNoLoad">—</div></div>
+      <div class="chip chip-highlight" style="border-color:var(--drum);"><div class="chip-l">τ_dom — full load</div><div class="chip-v" style="color:var(--drum);" id="dt-tauFull">—</div></div>
+      <div class="chip"><div class="chip-l">Slowdown factor</div><div class="chip-v" id="dt-factor">—</div></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-line" style="background:var(--gear);opacity:0.5;"></div>Motor + gearbox (no payload)</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--drum);"></div>Motor + gearbox + drum + load</div>
+      <div class="legend-item"><div class="legend-dash" style="border-color:var(--gear);"></div>τ (no payload)</div>
+      <div class="legend-item"><div class="legend-dash" style="border-color:var(--drum);"></div>τ (full load)</div>
+    </div>
+    <canvas id="cvPerfDrum" height="200"></canvas>
+    <div class="cv-lab">The wider the gap, the more the load is slowing the system · This is the inertia mismatch problem made visible</div>
+  </div>
+</div>
+
+<!-- ══════════════ TAB 4: FULL SYSTEM ══════════════ -->
+<div id="pane-full" class="tab-pane">
+  <div class="card">
+    <div class="accent-line" style="background:var(--full);"></div>
+    <div class="card-t" style="color:var(--full);">Full system — voltage to position</div>
+    <div class="card-s">All blocks cascaded. All inertias reflected to the motor shaft. The drum's r/s integrator converts speed to position — making this a Type-1 system with zero steady-state position error.</div>
+    <div class="flow-row">
+      <div><div class="flow-block" style="background:var(--blue-l);color:var(--motor);border:1px solid var(--motor);">V(s)</div></div>
+      <div class="flow-arrow">→</div>
+      <div><div class="flow-block" style="background:var(--blue-l);color:var(--motor);border:1px solid var(--motor);">Motor · K/[…]</div></div>
+      <div class="flow-arrow">→</div>
+      <div><div class="flow-block" style="background:var(--amber-l);color:var(--gear);border:1px solid var(--gear);">÷ N</div></div>
+      <div class="flow-arrow">→</div>
+      <div><div class="flow-block" style="background:var(--teal-l);color:var(--drum);border:1px solid var(--teal);">r / s</div></div>
+      <div class="flow-arrow">→</div>
+      <div><div class="flow-block" style="background:var(--purple-l);color:var(--full);border:1px solid var(--purple);">X(s)</div></div>
+    </div>
+    <div class="tf">
+      <div class="tf-lab">Full system TF — position X(s) per unit voltage V(s)</div>
+      <div class="tf-row">
+        <span class="tf-lhs">X(s) / V(s) =</span>
+        <div class="tf-frac">
+          <div class="tf-n" id="fTfN">—</div>
+          <div class="tf-bar"></div>
+          <div class="tf-d" id="fTfD">s (a₂s² + a₁s + a₀)</div>
+        </div>
+      </div>
+      <div class="tf-note">Type-1 system: the 1/s integrator guarantees zero steady-state position error to a step voltage command.</div>
+    </div>
+    <div class="chips chips-4">
+      <div class="chip chip-highlight" style="border-color:var(--full);"><div class="chip-l">J_total (motor shaft)</div><div class="chip-v" id="fJtot">—</div></div>
+      <div class="chip chip-highlight" style="border-color:var(--full);"><div class="chip-l">b_total (motor shaft)</div><div class="chip-v" id="fBtot">—</div></div>
+      <div class="chip"><div class="chip-l">Natural freq. ωₙ</div><div class="chip-v" id="fWn">—</div></div>
+      <div class="chip"><div class="chip-l">Damping ratio ζ</div><div class="chip-v" id="fZeta">—</div></div>
+    </div>
+    <div class="sep"></div>
+    <div class="card-t" style="font-size:12px;margin-bottom:8px;">Inertia mismatch summary</div>
+    <div class="mismatch-wrap" id="fullMismatchViz"></div>
+    <div class="highlight-box" id="fullMismatchNote">—</div>
+    <div class="sep"></div>
+    <div class="card-t" style="font-size:12px;margin-bottom:4px;">Position step response — 1 V step</div>
+    <canvas id="cvFull" height="200"></canvas>
+    <div class="cv-lab">Cable position x(t) [m] — open-loop response to a 1 V step</div>
+    <canvas id="cvFullW" height="150"></canvas>
+    <div class="cv-lab">Motor speed ω_m(t) — same 1 V step, second-order dynamics before integration</div>
+  </div>
+
+  <!-- PERFORMANCE PLOT — FULL -->
+  <div class="card">
+    <div class="accent-line" style="background:var(--full);opacity:0.4;"></div>
+    <div class="card-t">Performance — time constant accumulation across the chain</div>
+    <div class="card-s">Each block adds to the dominant time constant. The chart below overlays all four stages on a single plot so you can see exactly how much lag each section contributes. The gap between each stage's τ marker is that block's contribution.</div>
+    <div class="chips chips-4" style="margin-bottom:4px;">
+      <div class="chip chip-highlight" style="border-color:var(--motor);"><div class="chip-l">τ — Motor alone</div><div class="chip-v" style="color:var(--motor);" id="ft-tau1">—</div></div>
+      <div class="chip chip-highlight" style="border-color:var(--gear);"><div class="chip-l">τ — + Gearbox</div><div class="chip-v" style="color:var(--gear);" id="ft-tau2">—</div></div>
+      <div class="chip chip-highlight" style="border-color:var(--drum);"><div class="chip-l">τ — + Drum</div><div class="chip-v" style="color:var(--drum);" id="ft-tau3">—</div></div>
+      <div class="chip chip-highlight" style="border-color:var(--full);"><div class="chip-l">τ — + Load</div><div class="chip-v" style="color:var(--full);" id="ft-tau4">—</div></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-line" style="background:var(--motor);opacity:0.35;"></div>Motor alone</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--gear);opacity:0.5;"></div>+ Gearbox</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--drum);opacity:0.7;"></div>+ Drum</div>
+      <div class="legend-item"><div class="legend-line" style="background:var(--full);"></div>+ Load (full)</div>
+    </div>
+    <canvas id="cvPerfFull" height="220"></canvas>
+    <div class="cv-lab">All four step responses overlaid on a shared time axis — τ markers show the dominant time constant at each stage · The final curve is what the motor actually "feels"</div>
+    <div class="sep"></div>
+    <div class="card-t" style="font-size:12px;margin-bottom:8px;">Reflected inertia breakdown</div>
+    <div id="inertiaBreakdown"></div>
+  </div>
+</div>
+
+</main>
+<footer>Cable Lift Position Control — Transfer Function Explorer</footer>
+
+<script>
+function g(id){return document.getElementById(id);}
+function gv(id){return parseFloat(g(id).value);}
+
+const TABS=['motor','gear','drum','full'];
+const COLORS={motor:'#1a6fc4',gear:'#7a5000',drum:'#0a7878',full:'#5040b0'};
+
+/* ── Dominant time constant from second-order coefficients ── */
+function domTau(a2,a1,a0){
+  // The dominant (slower) pole location:
+  // For a second-order system a2*s^2 + a1*s + a0, the slower pole is approximately:
+  // s_slow ≈ -a0/a1  (valid when poles are well-separated)
+  return a1/a0;
+}
+
+function showTab(name){
+  TABS.forEach(t=>{
+    g('pane-'+t).classList.toggle('active',t===name);
+    g('btn-'+t).className='tab-btn'+(t===name?' active-'+t:'');
+  });
+  if(name==='full')calcFull();
+  if(name==='drum')calcDrum();
+  if(name==='gear')calcGear();
+}
+
+function getParams(){
+  return {
+    R:gv('sR'),L:gv('sL'),K:gv('sK'),Jm:gv('sJm'),
+    N:gv('sN'),Jg:gv('sJg'),cb:gv('sCb'),
+    r:gv('sRd'),Jd:gv('sJd'),m:gv('sM')
+  };
+}
+
+/* Build system TF coefficients for any Jtot and btot */
+function buildTF(p, Jtot, btot){
+  const {R,L,K}=p;
+  const a2=L*Jtot, a1=L*btot+R*Jtot, a0=R*btot+K*K;
+  const wn=Math.sqrt(a0/a2), zeta=a1/(2*Math.sqrt(a0*a2));
+  const dc=K/a0;
+  return {a2,a1,a0,wn,zeta,dc};
+}
+
+function getSystemTF(p){
+  const {R,L,K,Jm,N,Jg,cb,r,Jd,m}=p;
+  const Jg_ref=Jg/(N*N), Jd_ref=Jd/(N*N), Jload_ref=m*r*r/(N*N);
+  const Jtot=Jm+Jg_ref+Jd_ref+Jload_ref;
+  const btot=2*cb+2*cb/(N*N);
+  const tf=buildTF(p,Jtot,btot);
+  const Kpos=K*r/N;
+  return {...tf,Jtot,btot,Kpos,Jg_ref,Jd_ref,Jload_ref,Jm,N,r};
+}
+
+/* ── Motor tab ── */
+function calc(){
+  const p=getParams();
+  const {R,L,K,Jm,N,Jg,cb,r,Jd,m}=p;
+
+  g('vR').textContent=R.toFixed(1)+' Ω';
+  g('vL').textContent=L.toFixed(2)+' H';
+  g('vK').textContent=K.toFixed(2);
+  g('vJm').textContent=Jm.toFixed(3)+' kg·m²';
+  g('vN').textContent=N.toFixed(3);
+  g('vJg').textContent=Jg.toFixed(3)+' kg·m²';
+  g('vCb').textContent=cb.toFixed(3);
+  g('vR_drum').textContent=r.toFixed(3)+' m';
+  g('vJd').textContent=Jd.toFixed(3)+' kg·m²';
+  g('vM').textContent=m.toFixed(1)+' kg';
+
+  // Motor alone (only 2 motor-side bearings)
+  const bm=2*cb;
+  const {a2,a1,a0,wn,zeta,dc}=buildTF(p,Jm,bm);
+  const tauE=L/R;
+  const tauM_mech=Jm*R/(K*K);  // back-EMF dominated mechanical tau
+
+  g('mTfN').textContent=K.toFixed(2);
+  g('mTfD').textContent=`${L.toFixed(2)}s+${R.toFixed(1)})(${Jm.toFixed(3)}s+${bm.toFixed(3)})+${(K*K).toFixed(3)}`;
+  g('mTfSpec').textContent=`Specific: ${K.toFixed(2)} / [${a2.toFixed(5)}s² + ${a1.toFixed(5)}s + ${a0.toFixed(4)}]`;
+  g('mTauE').textContent=fmtTime(tauE);
+  g('mWn').textContent=wn.toFixed(1)+' rad/s';
+  g('mZeta').textContent=zeta.toFixed(3);
+
+  const tMaxM=Math.max(0.3,12/wn);
+  const fnM=makeSecondOrder(dc,wn,zeta);
+  plotStep('cvMotor',fnM,tMaxM,dc*1.12,COLORS.motor,dc);
+
+  // Performance plot — motor
+  const tauDom=domTau(a2,a1,a0);
+  g('pt-tauE').textContent=fmtTime(tauE);
+  g('pt-tauM').textContent=fmtTime(tauM_mech);
+  g('pt-tauDom').textContent=fmtTime(tauDom);
+  plotPerfMotor('cvPerfMotor',fnM,tMaxM,dc,tauE,tauM_mech,COLORS.motor);
+
+  calcGear();
+  calcDrum();
+  if(g('pane-full').classList.contains('active'))calcFull();
+}
+
+/* ── Gear tab ── */
+function calcGear(){
+  const p=getParams();
+  const {N,Jg,cb,Jm}=p;
+  const Jg_ref=Jg/(N*N);
+  const btot=2*cb+2*cb/(N*N);
+
+  g('gNval').textContent=N.toFixed(3);
+  g('gN').textContent=N.toFixed(3);
+  g('gJgRef').textContent=Jg_ref.toFixed(5)+' kg·m²';
+  g('gBtot').textContent=btot.toFixed(5);
+  g('gN2').textContent=(N*N).toFixed(2)+'×';
+  g('gBred').textContent=((cb/(N*N))/cb*100).toFixed(1)+'% of c_b each';
+  g('gearNote').innerHTML=
+    `Motor-shaft bearings: <strong>2 × ${cb.toFixed(3)} = ${(2*cb).toFixed(3)}</strong> (direct)`+
+    `<br>Drum-shaft bearings reflected: <strong>2 × ${cb.toFixed(3)} / ${(N*N).toFixed(2)} = ${(2*cb/(N*N)).toFixed(5)}</strong>`+
+    `<br>Gear inertia reflected: <strong>${Jg.toFixed(3)} / ${(N*N).toFixed(2)} = ${Jg_ref.toFixed(5)} kg·m²</strong>`;
+
+  // Performance — before vs after gearbox
+  const bm_only=2*cb;
+  const tf_before=buildTF(p,p.Jm,bm_only);
+  const Jtot_gear=p.Jm+Jg_ref;
+  const tf_after=buildTF(p,Jtot_gear,btot);
+
+  const tau_before=domTau(tf_before.a2,tf_before.a1,tf_before.a0);
+  const tau_after=domTau(tf_after.a2,tf_after.a1,tf_after.a0);
+  const delta=(tau_after-tau_before);
+
+  g('gt-tauBefore').textContent=fmtTime(tau_before);
+  g('gt-tauAfter').textContent=fmtTime(tau_after);
+  g('gt-tauDelta').textContent=(delta>=0?'+':'')+fmtTime(Math.abs(delta));
+
+  const tMax=Math.max(0.3,14/Math.min(tf_before.wn,tf_after.wn));
+  const fn1=makeSecondOrder(tf_before.dc,tf_before.wn,tf_before.zeta);
+  const fn2=makeSecondOrder(tf_after.dc,tf_after.wn,tf_after.zeta);
+  const yMax=Math.max(tf_before.dc,tf_after.dc)*1.15;
+  plotPerfOverlay('cvPerfGear',fn1,fn2,tMax,yMax,
+    COLORS.motor,COLORS.gear,tau_before,tau_after,
+    tf_before.dc,tf_after.dc,0.4,1.0);
+}
+
+/* ── Drum tab ── */
+function calcDrum(){
+  const p=getParams();
+  const {N,r,Jd,m}=p;
+  const Jload_drum=m*r*r;
+  const Jload_motor=Jload_drum/(N*N);
+  const Jd_motor=Jd/(N*N);
+
+  g('dJload_drum').textContent=Jload_drum.toFixed(5)+' kg·m²';
+  g('dJload_motor').textContent=Jload_motor.toFixed(5)+' kg·m²';
+  g('dJdrum_motor').textContent=Jd_motor.toFixed(5)+' kg·m²';
+
+  const tf=getSystemTF(p);
+  renderMismatch('mismatchViz','mismatchNote',tf);
+
+  // Performance — no payload vs full load
+  const {Jg_ref,Jtot,btot,Jload_ref,Jd_ref,Jm}=tf;
+  const Jtot_noload=Jm+Jg_ref+Jd_ref;
+  const tf_noload=buildTF(p,Jtot_noload,btot);
+  const tf_full=buildTF(p,Jtot,btot);
+
+  const tau_nl=domTau(tf_noload.a2,tf_noload.a1,tf_noload.a0);
+  const tau_fl=domTau(tf_full.a2,tf_full.a1,tf_full.a0);
+  const factor=tau_fl/tau_nl;
+
+  g('dt-tauNoLoad').textContent=fmtTime(tau_nl);
+  g('dt-tauFull').textContent=fmtTime(tau_fl);
+  g('dt-factor').textContent=factor.toFixed(2)+'×';
+
+  const tMax=Math.max(0.3,14/Math.min(tf_noload.wn,tf_full.wn));
+  const fn1=makeSecondOrder(tf_noload.dc,tf_noload.wn,tf_noload.zeta);
+  const fn2=makeSecondOrder(tf_full.dc,tf_full.wn,tf_full.zeta);
+  const yMax=Math.max(tf_noload.dc,tf_full.dc)*1.15;
+  plotPerfOverlay('cvPerfDrum',fn1,fn2,tMax,yMax,
+    COLORS.gear,COLORS.drum,tau_nl,tau_fl,
+    tf_noload.dc,tf_full.dc,0.5,1.0);
+}
+
+/* ── Full tab ── */
+function calcFull(){
+  const p=getParams();
+  const tf=getSystemTF(p);
+  const {Jtot,btot,a2,a1,a0,wn,zeta,Kpos,Jg_ref,Jd_ref,Jload_ref,Jm,N,r}=tf;
+
+  g('fJtot').textContent=Jtot.toFixed(5)+' kg·m²';
+  g('fBtot').textContent=btot.toFixed(5);
+  g('fWn').textContent=wn.toFixed(1)+' rad/s';
+  g('fZeta').textContent=zeta.toFixed(3);
+  g('fTfN').textContent=Kpos.toFixed(5);
+  g('fTfD').textContent=`s(${a2.toFixed(5)}s² + ${a1.toFixed(5)}s + ${a0.toFixed(4)})`;
+
+  renderMismatch('fullMismatchViz','fullMismatchNote',tf);
+
+  const dc=p.K/a0;
+  const fnW=makeSecondOrder(dc,wn,zeta);
+  const tMaxW=Math.max(0.5,14/wn);
+  plotStep('cvFullW',fnW,tMaxW,dc*1.12,COLORS.motor,dc);
+  plotPosition('cvFull',p.K,a2,a1,a0,Kpos,tMaxW*2.5,COLORS.full);
+
+  // Four-stage overlay for performance plot
+  const bm=2*p.cb, btot_val=2*p.cb+2*p.cb/(N*N);
+  const Jg_ref2=p.Jg/(N*N), Jd_ref2=p.Jd/(N*N);
+  const Jtot1=Jm;
+  const Jtot2=Jm+Jg_ref2;
+  const Jtot3=Jm+Jg_ref2+Jd_ref2;
+  const Jtot4=Jtot;
+
+  const tf1=buildTF(p,Jtot1,bm);
+  const tf2=buildTF(p,Jtot2,btot_val);
+  const tf3=buildTF(p,Jtot3,btot_val);
+  const tf4=buildTF(p,Jtot4,btot_val);
+
+  const tau1=domTau(tf1.a2,tf1.a1,tf1.a0);
+  const tau2=domTau(tf2.a2,tf2.a1,tf2.a0);
+  const tau3=domTau(tf3.a2,tf3.a1,tf3.a0);
+  const tau4=domTau(tf4.a2,tf4.a1,tf4.a0);
+
+  g('ft-tau1').textContent=fmtTime(tau1);
+  g('ft-tau2').textContent=fmtTime(tau2);
+  g('ft-tau3').textContent=fmtTime(tau3);
+  g('ft-tau4').textContent=fmtTime(tau4);
+
+  const fns=[
+    {fn:makeSecondOrder(tf1.dc,tf1.wn,tf1.zeta), dc:tf1.dc, tau:tau1, color:COLORS.motor, alpha:0.3},
+    {fn:makeSecondOrder(tf2.dc,tf2.wn,tf2.zeta), dc:tf2.dc, tau:tau2, color:COLORS.gear,  alpha:0.5},
+    {fn:makeSecondOrder(tf3.dc,tf3.wn,tf3.zeta), dc:tf3.dc, tau:tau3, color:COLORS.drum,  alpha:0.7},
+    {fn:makeSecondOrder(tf4.dc,tf4.wn,tf4.zeta), dc:tf4.dc, tau:tau4, color:COLORS.full,  alpha:1.0},
+  ];
+  const tMax=Math.max(0.4,tau4*6);
+  const yMax=Math.max(...fns.map(f=>f.dc))*1.15;
+  plotPerfFull('cvPerfFull',fns,tMax,yMax);
+
+  // Inertia breakdown
+  g('inertiaBreakdown').innerHTML=`
+    <div class="chips chips-4" style="margin-top:8px;">
+      <div class="chip chip-highlight" style="border-color:var(--motor);">
+        <div class="chip-l">J_motor (rotor)</div><div class="chip-v" style="color:var(--motor);">${Jm.toFixed(4)}</div>
+        <div class="chip-l" style="margin-top:2px;">${(Jm/Jtot*100).toFixed(1)}% of J_total</div>
+      </div>
+      <div class="chip chip-highlight" style="border-color:var(--gear);">
+        <div class="chip-l">J_gear reflected</div><div class="chip-v" style="color:var(--gear);">${Jg_ref.toFixed(4)}</div>
+        <div class="chip-l" style="margin-top:2px;">${(Jg_ref/Jtot*100).toFixed(1)}% of J_total</div>
+      </div>
+      <div class="chip chip-highlight" style="border-color:var(--drum);">
+        <div class="chip-l">J_drum reflected</div><div class="chip-v" style="color:var(--drum);">${Jd_ref.toFixed(4)}</div>
+        <div class="chip-l" style="margin-top:2px;">${(Jd_ref/Jtot*100).toFixed(1)}% of J_total</div>
+      </div>
+      <div class="chip chip-highlight" style="border-color:#888;">
+        <div class="chip-l">J_load reflected</div><div class="chip-v">${Jload_ref.toFixed(4)}</div>
+        <div class="chip-l" style="margin-top:2px;">${(Jload_ref/Jtot*100).toFixed(1)}% of J_total</div>
+      </div>
+    </div>`;
+}
+
+/* ── Mismatch renderer ── */
+function renderMismatch(vizId,noteId,tf){
+  const {Jtot,Jm,Jg_ref,Jd_ref,Jload_ref}=tf;
+  const Jr=Jg_ref+Jd_ref+Jload_ref;
+  const ratio=Jr/Jm;
+  const barMax=5, barPct=Math.min(ratio/barMax*100,100), idealPct=1/barMax*100;
+  const col=ratio<=2?'var(--green)':ratio<=5?'var(--amber)':'var(--coral)';
+  let cls,msg;
+  if(ratio<0.5){cls='hb-info';msg=`<strong>Mismatch ratio: ${ratio.toFixed(2)} — underloaded.</strong> The motor is oversized for this load. The system will be highly responsive but potentially wasteful.`;}
+  else if(ratio<=2){cls='hb-good';msg=`<strong>Mismatch ratio: ${ratio.toFixed(2)} — well matched.</strong> Reflected load inertia is within the ideal range. The motor can efficiently accelerate and control the load.`;}
+  else if(ratio<=5){cls='hb-warn';msg=`<strong>Mismatch ratio: ${ratio.toFixed(2)} — moderate mismatch.</strong> The motor must fight ${ratio.toFixed(1)}× its own inertia. Control bandwidth is reduced. Consider a higher gear ratio or larger K.`;}
+  else{cls='hb-bad';msg=`<strong>Mismatch ratio: ${ratio.toFixed(2)} — severe mismatch.</strong> The motor is fighting a load ${ratio.toFixed(0)}× its own inertia. Expect poor bandwidth, potential instability, and overheating. Redesign the gear ratio or choose a different motor.`;}
+  g(vizId).innerHTML=`
+    <div class="mismatch-row">
+      <div class="mismatch-label">J_reflected / J_motor</div>
+      <div class="mismatch-bar-bg">
+        <div class="mismatch-bar-fg" style="width:${barPct}%;background:${col}"></div>
+        <div class="mismatch-ideal" style="left:${idealPct}%"></div>
+      </div>
+      <div class="mismatch-val" style="color:${col}">${ratio.toFixed(2)}×</div>
+    </div>
+    <div style="font-size:10px;color:var(--t3);text-align:right;margin-top:2px;">Green line = ideal (ratio = 1.0) · Bar capped at 5×</div>`;
+  const el=g(noteId);el.className='highlight-box '+cls;el.innerHTML=msg;
+}
+
+/* ── Second-order step response function ── */
+function makeSecondOrder(dc,wn,zeta){
+  if(zeta>=1){
+    const sq=Math.sqrt(Math.max(0,zeta*zeta-1));
+    const r1=-wn*(zeta-sq),r2=-wn*(zeta+sq);
+    if(Math.abs(r1-r2)<1e-8)return t=>dc*(1-Math.exp(r1*t)*(1-r1*t));
+    const c1=dc*r2/(r2-r1),c2=dc*r1/(r1-r2);
+    return t=>dc-c1*Math.exp(r1*t)-c2*Math.exp(r2*t);
+  }
+  const wd=wn*Math.sqrt(1-zeta*zeta);
+  return t=>dc*(1-Math.exp(-zeta*wn*t)*(Math.cos(wd*t)+(zeta/Math.sqrt(1-zeta*zeta))*Math.sin(wd*t)));
+}
+
+/* ── Canvas setup helper ── */
+function setupCanvas(id,H){
+  const cv=g(id);if(!cv)return null;
+  const dpr=window.devicePixelRatio||1;
+  const W=cv.clientWidth||600;
+  cv.width=W*dpr;cv.height=(H||170)*dpr;
+  const ctx=cv.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const dk=matchMedia('(prefers-color-scheme:dark)').matches;
+  return {ctx,W,H:H||170,dk,dpr};
+}
+
+function drawGrid(ctx,W,H,pad,dk){
+  const {l,r,t,b}=pad;
+  const gW=W-l-r,gH=H-t-b;
+  const gridC=dk?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)';
+  ctx.strokeStyle=gridC;ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){const y=t+gH*i/4;ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(W-r,y);ctx.stroke();}
+  for(let i=0;i<=5;i++){const x=l+gW*i/5;ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,t+gH);ctx.stroke();}
+  return {gW,gH};
+}
+
+function drawAxes(ctx,W,H,pad,tMax,yMax,dk){
+  const {l,r,t,b}=pad;
+  const gW=W-l-r,gH=H-t-b;
+  const txtC=dk?'rgba(255,255,255,0.30)':'rgba(0,0,0,0.35)';
+  ctx.fillStyle=txtC;ctx.font='10px system-ui';
+  ctx.textAlign='right';
+  ctx.fillText(fmtNum(yMax),l-4,t+5);
+  ctx.fillText(fmtNum(yMax/2),l-4,t+gH/2+4);
+  ctx.fillText('0',l-4,t+gH+4);
+  ctx.textAlign='center';
+  ctx.fillText('0',l,t+gH+16);
+  ctx.fillText(fmtTime(tMax/2),l+gW/2,t+gH+16);
+  ctx.fillText(fmtTime(tMax),W-r,t+gH+16);
+}
+
+function drawTauMarker(ctx,tau,tMax,W,H,pad,yMax,color,label,dk){
+  const {l,r,t,b}=pad;
+  const gW=W-l-r,gH=H-t-b;
+  if(tau>tMax*1.05||tau<0)return;
+  const x=l+gW*tau/tMax;
+  ctx.strokeStyle=color;ctx.setLineDash([4,3]);ctx.lineWidth=1.5;
+  ctx.globalAlpha=0.75;
+  ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,t+gH);ctx.stroke();
+  ctx.setLineDash([]);ctx.globalAlpha=1;
+  ctx.fillStyle=color;ctx.font='bold 10px system-ui';ctx.textAlign='center';
+  ctx.fillText(label,x,t-3);
+  // 63% horizontal reference line
+  const ss63Y=t+gH*(1-0.63);
+  ctx.strokeStyle=dk?'rgba(255,255,255,0.18)':'rgba(0,0,0,0.15)';
+  ctx.setLineDash([3,4]);ctx.lineWidth=0.8;
+  ctx.beginPath();ctx.moveTo(l,ss63Y);ctx.lineTo(W-r,ss63Y);ctx.stroke();
+  ctx.setLineDash([]);
+  const txtC=dk?'rgba(255,255,255,0.28)':'rgba(0,0,0,0.30)';
+  ctx.fillStyle=txtC;ctx.font='9px system-ui';ctx.textAlign='left';
+  ctx.fillText('63%',l+2,ss63Y-3);
+}
+
+function drawCurve(ctx,fn,tMax,W,H,pad,yMax,color,alpha,fill){
+  const {l,r,t,b}=pad;
+  const gW=W-l-r,gH=H-t-b;
+  const N=500;
+  ctx.globalAlpha=alpha;
+  ctx.strokeStyle=color;ctx.lineWidth=alpha>0.8?2.2:1.6;ctx.lineJoin='round';
+  ctx.beginPath();
+  for(let i=0;i<=N;i++){
+    const tt=tMax*i/N,y=Math.min(fn(tt),yMax*1.5);
+    const px=l+gW*i/N,py=t+gH*(1-y/yMax);
+    if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+  if(fill){
+    ctx.lineTo(l+gW,t+gH);ctx.lineTo(l,t+gH);ctx.closePath();
+    const dk=matchMedia('(prefers-color-scheme:dark)').matches;
+    ctx.fillStyle=dk?color.replace(')',',0.08)'):'rgba('+hexToRgb(color)+',0.05)';
+    ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+/* ── Performance plot: motor (two τ markers) ── */
+function plotPerfMotor(id,fn,tMax,dc,tauE,tauM,color){
+  const s=setupCanvas(id,200);if(!s)return;
+  const {ctx,W,H,dk}=s;
+  const pad={l:52,r:14,t:22,b:30};
+  const yMax=dc*1.15;
+  ctx.clearRect(0,0,W,H);
+  drawGrid(ctx,W,H,pad,dk);
+
+  // ss dashed line
+  const {gW,gH}=drawGrid(ctx,W,H,pad,dk);
+  const ssC=dk?'rgba(255,255,255,0.14)':'rgba(0,0,0,0.12)';
+  const ssY=pad.t+gH*(1-dc/yMax);
+  ctx.strokeStyle=ssC;ctx.setLineDash([5,4]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pad.l,ssY);ctx.lineTo(W-pad.r,ssY);ctx.stroke();
+  ctx.setLineDash([]);
+
+  drawCurve(ctx,fn,tMax,W,H,pad,yMax,color,1.0,true);
+
+  // τ_e marker (blue)
+  drawTauMarker(ctx,tauE,tMax,W,H,pad,yMax,COLORS.motor,'τ_e',dk);
+  // τ_m marker (coral)
+  drawTauMarker(ctx,tauM,tMax,W,H,pad,yMax,COLORS.coral,'τ_m',dk);
+
+  drawAxes(ctx,W,H,pad,tMax,yMax,dk);
+}
+
+/* ── Performance plot: two-curve overlay with τ markers ── */
+function plotPerfOverlay(id,fn1,fn2,tMax,yMax,color1,color2,tau1,tau2,dc1,dc2,alpha1,alpha2){
+  const s=setupCanvas(id,200);if(!s)return;
+  const {ctx,W,H,dk}=s;
+  const pad={l:52,r:14,t:22,b:30};
+  ctx.clearRect(0,0,W,H);
+  drawGrid(ctx,W,H,pad,dk);
+
+  // ss lines for both
+  const {gW,gH}=drawGrid(ctx,W,H,pad,dk);
+  [dc1,dc2].forEach((dc,i)=>{
+    if(dc===undefined)return;
+    const ssY=pad.t+gH*(1-dc/yMax);
+    if(ssY>pad.t&&ssY<pad.t+gH){
+      ctx.strokeStyle=dk?'rgba(255,255,255,0.10)':'rgba(0,0,0,0.08)';
+      ctx.setLineDash([3,4]);ctx.lineWidth=0.8;
+      ctx.beginPath();ctx.moveTo(pad.l,ssY);ctx.lineTo(W-pad.r,ssY);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  });
+
+  drawCurve(ctx,fn1,tMax,W,H,pad,yMax,color1,alpha1,false);
+  drawCurve(ctx,fn2,tMax,W,H,pad,yMax,color2,alpha2,true);
+
+  // τ markers
+  if(tau1>=0&&tau1<=tMax*1.05) drawTauMarker(ctx,tau1,tMax,W,H,pad,yMax,color1,'τ₁',dk);
+  if(tau2>=0&&tau2<=tMax*1.05) drawTauMarker(ctx,tau2,tMax,W,H,pad,yMax,color2,'τ₂',dk);
+
+  drawAxes(ctx,W,H,pad,tMax,yMax,dk);
+}
+
+/* ── Performance plot: four-curve full cascade ── */
+function plotPerfFull(id,fns,tMax,yMax){
+  const s=setupCanvas(id,220);if(!s)return;
+  const {ctx,W,H,dk}=s;
+  const pad={l:52,r:14,t:22,b:30};
+  ctx.clearRect(0,0,W,H);
+  drawGrid(ctx,W,H,pad,dk);
+
+  const labels=['τ_m','τ_g','τ_d','τ_L'];
+  fns.forEach((f,i)=>{
+    drawCurve(ctx,f.fn,tMax,W,H,pad,yMax,f.color,f.alpha,i===fns.length-1);
+  });
+  // Draw τ markers last so they sit on top
+  fns.forEach((f,i)=>{
+    if(f.tau>=0&&f.tau<=tMax*1.05)
+      drawTauMarker(ctx,f.tau,tMax,W,H,pad,yMax,f.color,labels[i],dk);
+  });
+  drawAxes(ctx,W,H,pad,tMax,yMax,dk);
+}
+
+/* ── Standard step response plot ── */
+function plotStep(id,fn,tMax,yMax,color,ssLine){
+  const s=setupCanvas(id,160);if(!s)return;
+  const {ctx,W,H,dk}=s;
+  const pad={l:52,r:14,t:14,b:30};
+  const {gW,gH}=drawGrid(ctx,W,H,pad,dk);
+  ctx.clearRect(0,0,W,H);
+  drawGrid(ctx,W,H,pad,dk);
+
+  if(ssLine!==undefined){
+    const ssY=pad.t+gH*(1-ssLine/yMax);
+    if(ssY>pad.t-5&&ssY<pad.t+gH+5){
+      const ssC=dk?'rgba(255,255,255,0.16)':'rgba(0,0,0,0.13)';
+      const txtC=dk?'rgba(255,255,255,0.30)':'rgba(0,0,0,0.35)';
+      ctx.strokeStyle=ssC;ctx.setLineDash([5,4]);ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(pad.l,ssY);ctx.lineTo(W-pad.r,ssY);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle=txtC;ctx.font='10px system-ui';ctx.textAlign='right';
+      ctx.fillText('ss = '+fmtNum(ssLine),W-pad.r-4,Math.max(ssY-5,pad.t+10));
+    }
+  }
+  drawCurve(ctx,fn,tMax,W,H,pad,yMax,color,1.0,true);
+  drawAxes(ctx,W,H,pad,tMax,yMax,dk);
+}
+
+/* ── Position plot ── */
+function plotPosition(canvasId,K,a2,a1,a0,Kpos,Tmax,color){
+  const s=setupCanvas(canvasId,200);if(!s)return;
+  const {ctx,W,H,dk}=s;
+  const pad={l:52,r:14,t:14,b:30};
+  const wn=Math.sqrt(a0/a2),zeta=a1/(2*Math.sqrt(a0*a2));
+  const dcSpeed=K/a0;
+  const fnW=makeSecondOrder(dcSpeed,wn,zeta);
+  const N_steps=3000,dt=Tmax/N_steps;
+  const times=[],positions=[];
+  let x=0;
+  for(let i=0;i<=N_steps;i++){
+    const t=i*dt;
+    if(i>0){const w0=fnW(times[i-1]),w1=fnW(t);x+=(w0+w1)*0.5*dt*Kpos/dcSpeed;}
+    times.push(t);positions.push(x);
+  }
+  const xMax=positions[N_steps],yMax=xMax*1.15;
+  const {gW,gH}=drawGrid(ctx,W,H,pad,dk);
+  ctx.clearRect(0,0,W,H);
+  drawGrid(ctx,W,H,pad,dk);
+  ctx.strokeStyle=color;ctx.lineWidth=2.2;ctx.lineJoin='round';
+  ctx.beginPath();
+  for(let i=0;i<times.length;i++){
+    const px=pad.l+gW*times[i]/Tmax,py=pad.t+gH*(1-positions[i]/yMax);
+    if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+  ctx.lineTo(pad.l+gW,pad.t+gH);ctx.lineTo(pad.l,pad.t+gH);ctx.closePath();
+  ctx.fillStyle=dk?color.replace(')',',0.10)'):'rgba('+hexToRgb(color)+',0.06)';
+  ctx.fill();
+  const txtC=dk?'rgba(255,255,255,0.30)':'rgba(0,0,0,0.35)';
+  ctx.fillStyle=txtC;ctx.font='10px system-ui';
+  ctx.textAlign='right';
+  ctx.fillText(yMax.toFixed(3)+'m',pad.l-4,pad.t+5);
+  ctx.fillText((yMax/2).toFixed(3)+'m',pad.l-4,pad.t+gH/2+4);
+  ctx.fillText('0',pad.l-4,pad.t+gH+4);
+  ctx.textAlign='center';
+  ctx.fillText('0',pad.l,pad.t+gH+16);
+  ctx.fillText(fmtTime(Tmax/2),pad.l+gW/2,pad.t+gH+16);
+  ctx.fillText(fmtTime(Tmax),W-pad.r,pad.t+gH+16);
+}
+
+function fmtTime(v){return v<0.001?(v*1000).toFixed(2)+' ms':v<1?(v*1000).toFixed(0)+' ms':v.toFixed(2)+' s';}
+function fmtNum(v){return v>=100?Math.round(v).toString():v>=10?v.toFixed(1):v>=1?v.toFixed(2):v.toFixed(3);}
+function hexToRgb(h){return parseInt(h.slice(1,3),16)+','+parseInt(h.slice(3,5),16)+','+parseInt(h.slice(5,7),16);}
+
+calc();
+window.addEventListener('resize',()=>{
+  calc();
+  const active=TABS.find(t=>g('pane-'+t).classList.contains('active'));
+  if(active==='full')calcFull();
+  else if(active==='gear')calcGear();
+  else if(active==='drum')calcDrum();
+});
+</script>
+</body>
+</html>
